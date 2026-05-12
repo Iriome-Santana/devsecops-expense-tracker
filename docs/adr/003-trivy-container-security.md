@@ -53,3 +53,17 @@ Cualquier actualización de la imagen base que introduzca un nuevo
 CVE con fix disponible bloqueará el pipeline automáticamente.
 El developer tendrá que actualizar la dependencia afectada antes
 de que el deploy llegue a producción.
+
+## Por qué schedule y no repository dispatch
+
+Repository dispatch requiere configurar un Personal Access Token
+con permisos entre repos y añadir un job extra al pipeline del
+expense tracker. La complejidad añadida no justifica el beneficio
+para un proyecto de una persona.
+
+El schedule tiene además una ventaja que repository dispatch no
+tiene: detecta CVEs nuevos publicados en la base de datos de Trivy
+aunque no haya habido cambios en el código. Una vulnerabilidad
+publicada hoy aparecerá en el scan de mañana sin necesidad de
+hacer ningún commit. La seguridad no es solo reactiva a cambios
+de código sino también proactiva ante nuevas vulnerabilidades.
