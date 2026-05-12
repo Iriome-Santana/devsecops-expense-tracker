@@ -1,0 +1,13 @@
+title = "Gitleaks config — devsecops-expense-tracker"
+
+[allowlist]
+  description = "Global allowlist"
+  paths = [
+    '''.env.example''',
+  ]
+  regexes = [
+    '''example_password''',
+    '''example_user''',
+    '''your_.*_here''',
+    '''your_grafana_password''',
+  ]
