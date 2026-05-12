@@ -82,7 +82,7 @@ jobs:
 
       - name: Run pip-audit
         run: |
-          pip-audit -r /dev/stdin << EOF
+          pip-audit --fail-on-vuln -r /dev/stdin << EOF
           fastapi==0.129.0
           uvicorn==0.41.0
           sqlalchemy==2.0.49
