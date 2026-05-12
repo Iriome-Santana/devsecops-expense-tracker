@@ -1,0 +1,24 @@
+name: Security Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  secret-scan:
+    name: Secret Detection (Gitleaks)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout expense tracker
+        uses: actions/checkout@v4
+        with:
+          repository: Iriome-Santana/expense-tracker-sre
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
