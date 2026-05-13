@@ -9,11 +9,23 @@
 
 ## What is this?
 
-Este repo no es una aplicación. Es una **capa de seguridad independiente** aplicada sobre infraestructura real ya desplegada: el [SRE Expense Tracker](https://github.com/Iriome-Santana/expense-tracker-sre), una API REST corriendo en producción en AWS EC2.
+This repository implements a continuous security pipeline for a production-like AWS-hosted application.
 
-La decisión de mantener la seguridad en un repo separado es deliberada y está documentada. En entornos profesionales, el equipo de seguridad opera sobre los sistemas existentes desde fuera, no vive dentro del equipo de producto. Este repo replica ese modelo: un pipeline de seguridad autónomo que escanea una aplicación externa, bloquea si encuentra problemas reales, y se ejecuta automáticamente cada noche aunque no haya habido cambios en el código.
+Instead of embedding security checks inside the application repository, this project models security as an independent operational layer that continuously scans, validates and reports risks against a live system.
 
-La seguridad no depende de que nadie se acuerde de ejecutarla. Está automatizada.
+This separation is intentional and models security as an independent operational concern rather than an application feature.
+
+The target system is the [SRE Expense Tracker](https://github.com/Iriome-Santana/expense-tracker-sre): a REST API running in production on AWS EC2 with automated CI/CD, PostgreSQL, and S3 backups.
+
+---
+
+## Key Outcomes
+
+- Automated nightly security scanning against a live AWS-hosted application
+- Detected and fixed real CVEs in pip, setuptools and pytest
+- Defense-in-depth scanning across four independent layers: secrets, SAST, container vulnerabilities, and dependency vulnerabilities
+- Implemented documented risk acceptance for unfixed Debian CVEs with attack surface analysis
+- Zero additional infrastructure cost using GitHub Actions ephemeral runners
 
 ---
 
@@ -33,16 +45,16 @@ La seguridad no depende de que nadie se acuerde de ejecutarla. Está automatizad
 
 ## Why this exists
 
-El expense tracker tiene credenciales reales en producción, una imagen Docker desplegada en AWS, dependencias Python con versiones concretas, y código que podría contener patrones inseguros. Sin un proceso sistemático, cualquier problema de seguridad en cualquiera de esas capas es invisible hasta que es explotado.
+The expense tracker has real credentials in production, a Docker image deployed on AWS, Python dependencies with specific versions, and code that could contain insecure patterns. Without a systematic process, any security issue across those layers is invisible until exploited.
 
-Este proyecto automatiza la detección en cuatro capas independientes:
+This project automates detection across four independent layers:
 
-- **Secrets** en el código y en el historial de Git
-- **Patrones inseguros** en el código Python
-- **CVEs** en la imagen Docker desplegada en producción
-- **CVEs** en las dependencias Python de la aplicación
+- **Secrets** in code and Git history
+- **Insecure patterns** in Python code
+- **CVEs** in the Docker image deployed in production
+- **CVEs** in the application's Python dependencies
 
-Cada capa usa una herramienta diferente con una base de datos diferente. Si una no lo detecta, otra sí. Eso es defense in depth.
+Each layer uses a different tool with a different database. If one misses something, another catches it. That is defense in depth.
 
 ---
 
@@ -50,7 +62,7 @@ Cada capa usa una herramienta diferente con una base de datos diferente. Si una 
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│              devsecops-expense-tracker (este repo)              │
+│              devsecops-expense-tracker (this repo)              │
 │                                                                 │
 │  .github/workflows/security-pipeline.yml                        │
 │                                                                 │
@@ -59,26 +71,26 @@ Cada capa usa una herramienta diferente con una base de datos diferente. Si una 
 │  ├── pull request to main                                       │
 │  └── schedule: every day at 2:00 AM UTC                        │
 └────────────────────────────┬────────────────────────────────────┘
-                             │ apunta a
+                             │ targets
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│           expense-tracker-sre (repo objetivo)                   │
+│           expense-tracker-sre (target repo)                     │
 │                                                                 │
-│  ├── src/              ← Bandit escanea aquí                    │
-│  ├── pyproject.toml    ← pip-audit escanea las dependencias     │
-│  └── historial Git     ← Gitleaks escanea todo el historial     │
+│  ├── src/              ← Bandit scans here                      │
+│  ├── pyproject.toml    ← pip-audit scans dependencies           │
+│  └── Git history       ← Gitleaks scans full history            │
 └─────────────────────────────────────────────────────────────────┘
                              │
-                             │ imagen publicada en
+                             │ image published at
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │           Docker Hub: iriome2512/expense-tracker:latest         │
 │                                                                 │
-│           Trivy escanea esta imagen directamente                │
+│           Trivy scans this image directly                       │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-El pipeline corre en runners efímeros de GitHub Actions. No requiere infraestructura propia ni coste adicional. Todo el trabajo ocurre en la nube, no en la máquina del desarrollador.
+The pipeline runs on ephemeral GitHub Actions runners. No additional infrastructure required. No additional cost. Everything runs in the cloud, not on the developer's machine.
 
 ---
 
@@ -91,28 +103,28 @@ Push / PR / Schedule (2AM UTC)
 ┌──────────────────────────────┐
 │  Job 1: secret-scan          │
 │  Gitleaks                    │
-│  Escanea historial completo  │
-│  del repo del expense tracker│
-│  BLOQUEA si encuentra secrets│
+│  Scans full Git history      │
+│  of the expense tracker repo │
+│  BLOCKS if secrets found     │
 └──────────────┬───────────────┘
                │ needs: secret-scan
                ▼
 ┌──────────────────────────────┐
 │  Job 2: sast                 │
 │  Bandit                      │
-│  Analiza src/ buscando       │
-│  patrones Python inseguros   │
-│  BLOQUEA en severidad HIGH   │
-│  Reporte JSON como artefacto │
+│  Scans src/ for insecure     │
+│  Python patterns             │
+│  BLOCKS on HIGH severity     │
+│  JSON report as artifact     │
 └──────────────┬───────────────┘
                │ needs: sast
                ▼
 ┌──────────────────────────────┐
 │  Job 3: container-scan       │
 │  Trivy                       │
-│  Escanea imagen en Docker Hub│
-│  BLOQUEA en CRITICAL/HIGH    │
-│  con fix disponible          │
+│  Scans image on Docker Hub   │
+│  BLOCKS on CRITICAL/HIGH     │
+│  with fix available          │
 │  ignore-unfixed: true        │
 └──────────────┬───────────────┘
                │ needs: container-scan
@@ -120,62 +132,62 @@ Push / PR / Schedule (2AM UTC)
 ┌──────────────────────────────┐
 │  Job 4: dependency-scan      │
 │  pip-audit                   │
-│  Escanea dependencias Python │
-│  declaradas en pyproject.toml│
-│  BLOQUEA si encuentra CVEs   │
+│  Scans declared Python deps  │
+│  from pyproject.toml         │
+│  BLOCKS if CVEs found        │
 └──────────────────────────────┘
 ```
 
-Cada job depende del anterior. Si Gitleaks encuentra un secret, los tres jobs siguientes no se ejecutan. El deploy del expense tracker solo ocurre si su propio CI/CD pasa — este pipeline es una capa adicional de visibilidad y alerta, no el gate de deploy.
+Each job depends on the previous one. If Gitleaks finds a secret, the three following jobs do not run. The expense tracker deploy only happens if its own CI/CD passes — this pipeline is an additional visibility and alerting layer, not the deploy gate.
 
-El schedule diario tiene un beneficio que un trigger por push no tiene: detecta CVEs nuevos publicados en las bases de datos aunque no haya habido cambios en el código. Una vulnerabilidad publicada hoy aparecerá en el scan de mañana.
+The nightly schedule has a benefit that a push trigger does not: it detects new CVEs published in vulnerability databases even when no code has changed. A vulnerability published today will appear in tomorrow's scan.
 
 ---
 
 ## What was found and fixed
 
-Estos son los problemas reales que el pipeline encontró durante su implementación y que se corrigieron en el expense tracker como resultado directo.
+These are the real issues the pipeline found during implementation, corrected in the expense tracker as a direct result.
 
 ### pip CVE-2025-8869, CVE-2026-6357, CVE-2026-1703
-**Herramienta:** Trivy  
-**Severidad:** MEDIUM  
-**Causa:** pip 25.0.1 instalado en la imagen Docker tenía tres CVEs con fix disponible  
-**Fix:** pip actualizado a 26.1 en el Dockerfile  
+**Tool:** Trivy
+**Severity:** MEDIUM
+**Cause:** pip 25.0.1 installed in the Docker image had three CVEs with available fix
+**Fix:** pip upgraded to 26.1 in the Dockerfile
 **Commit:** `fix(security): upgrade pip to 26.1 to address CVE-2025-8869, CVE-2026-6357, CVE-2026-1703`
 
 ### setuptools CVE-2024-6345, PYSEC-2025-49
-**Herramienta:** pip-audit  
-**Severidad:** HIGH / MEDIUM  
-**Causa:** setuptools 68.1.2 declarado en pyproject.toml tenía CVEs con fix disponible  
-**Fix:** setuptools actualizado a 78.1.1  
+**Tool:** pip-audit
+**Severity:** HIGH / MEDIUM
+**Cause:** setuptools 68.1.2 declared in pyproject.toml had CVEs with available fix
+**Fix:** setuptools upgraded to 78.1.1
 **Commit:** `fix(security): upgrade setuptools to 78.1.1 and pytest to 9.0.3`
 
 ### pytest CVE-2025-71176
-**Herramienta:** pip-audit  
-**Severidad:** MEDIUM  
-**Causa:** pytest 7.4.3 (dependencia de dev) tenía CVE con fix disponible  
-**Fix:** pytest actualizado a 9.0.3  
+**Tool:** pip-audit
+**Severity:** MEDIUM
+**Cause:** pytest 7.4.3 (dev dependency) had CVE with available fix
+**Fix:** pytest upgraded to 9.0.3
 **Commit:** `fix(security): upgrade setuptools to 78.1.1 and pytest to 9.0.3`
 
-### 7 CVEs HIGH en imagen base Debian — aceptados
-**Herramienta:** Trivy  
-**Severidad:** HIGH  
-**Estado:** Sin fix disponible en Debian a fecha del análisis  
-**Decisión:** Aceptados con criterio documentado en `docs/security-findings/trivy-risk-acceptance.md`  
-Las vulnerabilidades afectan a ncurses, systemd y libcap2. Ninguna es accesible desde la superficie de ataque de la API. El pipeline las ignora con `ignore-unfixed: true` y las revisa automáticamente en cada ejecución nocturna.
+### 7 HIGH CVEs in Debian base image — accepted
+**Tool:** Trivy
+**Severity:** HIGH
+**Status:** No fix available in Debian at time of analysis
+**Decision:** Accepted with documented criteria in `docs/security-findings/trivy-risk-acceptance.md`
+Vulnerabilities affect ncurses, systemd and libcap2. None are reachable from the API attack surface. The pipeline ignores them with `ignore-unfixed: true` and reviews them automatically on every nightly run.
 
 ---
 
 ## Tools
 
-| Herramienta | Versión | Qué escanea | Bloquea en |
+| Tool | Version | What it scans | Blocks on |
 |---|---|---|---|
-| Gitleaks | v8.18.4 | Secrets en código e historial Git | Cualquier secret detectado |
-| Bandit | latest | Patrones inseguros en código Python | Severidad HIGH |
-| Trivy | latest | CVEs en imagen Docker | CRITICAL/HIGH con fix disponible |
-| pip-audit | latest | CVEs en dependencias Python | Cualquier CVE encontrado |
+| Gitleaks | v8.18.4 | Secrets in code and Git history | Any detected secret |
+| Bandit | latest | Insecure patterns in Python code | HIGH severity |
+| Trivy | latest | CVEs in Docker image | CRITICAL/HIGH with available fix |
+| pip-audit | latest | CVEs in Python dependencies | Any CVE found |
 
-Todas las herramientas son open source y gratuitas. El pipeline corre en GitHub Actions gratis para repos públicos. Coste total de infraestructura: 0€.
+All tools are open source and free. The pipeline runs on GitHub Actions for free on public repos. Total infrastructure cost: €0.
 
 ---
 
@@ -185,7 +197,7 @@ Todas las herramientas son open source y gratuitas. El pipeline corre en GitHub 
 devsecops-expense-tracker/
 ├── .github/
 │   └── workflows/
-│       └── security-pipeline.yml   ← pipeline completo
+│       └── security-pipeline.yml   ← full pipeline
 ├── docs/
 │   ├── adr/
 │   │   ├── 001-gitleaks-secret-detection.md
@@ -194,43 +206,43 @@ devsecops-expense-tracker/
 │   │   └── 004-pip-audit-dependency-scan.md
 │   └── security-findings/
 │       └── trivy-risk-acceptance.md
-├── .gitleaks.toml                   ← allowlist de falsos positivos
-└── .pre-commit-config.yaml          ← hooks locales pre-commit
+├── .gitleaks.toml                   ← false positive allowlist
+└── .pre-commit-config.yaml          ← local pre-commit hooks
 ```
 
 ---
 
 ## Architecture Decision Records
 
-Las decisiones técnicas de este proyecto están documentadas en `docs/adr/`. Cada ADR explica el contexto, las alternativas consideradas, la decisión tomada y sus consecuencias.
+Technical decisions for this project are documented in `docs/adr/`. Each ADR explains the context, alternatives considered, the decision taken and its consequences.
 
-### Por qué un repo separado y no dentro del expense tracker
+### Why a separate repo instead of inside the expense tracker
 
-Meter el pipeline de seguridad dentro del repo del expense tracker sería más simple pero narrativamente incorrecto. La seguridad es una disciplina que opera sobre sistemas desde fuera, no una feature que vive dentro de la aplicación. Un repo separado refleja ese modelo mental y demuestra que se entiende la diferencia.
+Putting the security pipeline inside the expense tracker repository would be simpler but architecturally incorrect. This separation models security as an independent operational concern rather than an application feature — and makes that design decision explicit and reviewable.
 
-### Por qué schedule diario y no repository dispatch
+### Why nightly schedule instead of repository dispatch
 
-Repository dispatch requiere configurar tokens entre repos y añadir jobs al pipeline del expense tracker. El schedule es más simple y tiene una ventaja que repository dispatch no tiene: detecta CVEs nuevos publicados en las bases de datos aunque no haya habido cambios en el código. La seguridad no es solo reactiva a cambios, también es proactiva ante nuevas vulnerabilidades.
+Repository dispatch requires configuring cross-repo tokens and adding jobs to the expense tracker pipeline. The schedule is simpler and has one advantage repository dispatch does not: it detects new CVEs published in vulnerability databases even when no code has changed. Security is not only reactive to code changes, it is also proactive against new vulnerabilities.
 
-### Por qué ignore-unfixed en Trivy
+### Why ignore-unfixed in Trivy
 
-Bloquear el pipeline por vulnerabilidades sin fix disponible genera ruido sin valor: no hay acción posible. La política correcta es bloquear solo cuando existe un fix que no se ha aplicado, y documentar con criterio los findings sin fix en el risk acceptance. Eso es lo que hace un equipo de seguridad real.
+Blocking the pipeline for vulnerabilities with no available fix generates noise without value: there is no possible action. The correct policy is to block only when a fix exists and has not been applied, and to document findings without a fix using documented risk acceptance criteria. That is what a real security team does.
 
-### Por qué estas cuatro herramientas en este orden
+### Why these four tools in this order
 
-El orden refleja el coste de detección tardía. Los secrets son lo más crítico porque son irreversibles una vez expuestos: primero Gitleaks. El código inseguro es más fácil de corregir antes de buildear que después: segundo Bandit. La imagen ya buildeada se escanea después: tercero Trivy. Las dependencias se verifican al final porque dependen de que la imagen exista: cuarto pip-audit.
+The order reflects the cost of late detection. Secrets are the most critical because they are irreversible once exposed: Gitleaks first. Insecure code is easier to fix before building than after: Bandit second. The already-built image is scanned next: Trivy third. Dependencies are verified last because they depend on the image existing: pip-audit fourth.
 
 ---
 
 ## Further documentation
 
-| Documento | Contenido |
+| Document | Content |
 |---|---|
-| [docs/adr/001-gitleaks-secret-detection.md](docs/adr/001-gitleaks-secret-detection.md) | Por qué Gitleaks, configuración de allowlist, política de bloqueo |
-| [docs/adr/002-bandit-sast.md](docs/adr/002-bandit-sast.md) | Por qué Bandit vs SonarQube vs Semgrep, resultado del análisis inicial |
-| [docs/adr/003-trivy-container-security.md](docs/adr/003-trivy-container-security.md) | Por qué Trivy vs Snyk, política ignore-unfixed, schedule vs repository dispatch |
-| [docs/adr/004-pip-audit-dependency-scan.md](docs/adr/004-pip-audit-dependency-scan.md) | Por qué pip-audit vs OWASP Dependency-Check, versiones explícitas |
-| [docs/security-findings/trivy-risk-acceptance.md](docs/security-findings/trivy-risk-acceptance.md) | Findings HIGH sin fix disponible, análisis de riesgo, metodología de decisión |
+| [docs/adr/001-gitleaks-secret-detection.md](docs/adr/001-gitleaks-secret-detection.md) | Why Gitleaks, allowlist configuration, blocking policy |
+| [docs/adr/002-bandit-sast.md](docs/adr/002-bandit-sast.md) | Why Bandit vs SonarQube vs Semgrep, initial analysis result |
+| [docs/adr/003-trivy-container-security.md](docs/adr/003-trivy-container-security.md) | Why Trivy vs Snyk, ignore-unfixed policy, schedule vs repository dispatch |
+| [docs/adr/004-pip-audit-dependency-scan.md](docs/adr/004-pip-audit-dependency-scan.md) | Why pip-audit vs OWASP Dependency-Check, explicit versions |
+| [docs/security-findings/trivy-risk-acceptance.md](docs/security-findings/trivy-risk-acceptance.md) | HIGH findings without available fix, risk analysis, decision methodology |
 
 ---
 
