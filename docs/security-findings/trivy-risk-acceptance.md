@@ -15,6 +15,20 @@ Herramienta: Trivy v0.70.0
 **Commit:** fix(security): upgrade pip to 26.1  
 **Estado:** Resuelto ✅
 
+### CVE-2026-4878 — libcap2
+**Severidad:** HIGH
+**Fix disponible:** Sí — parcheado el 2026-05-17
+**Acción:** apt-get upgrade añadido al Dockerfile del expense tracker
+**Commit:** fix(security): add apt-get upgrade to patch libcap2 CVE-2026-4878 and systemd CVE-2026-29111
+**Estado:** Resuelto ✅
+
+### CVE-2026-29111 — systemd (libsystemd0, libudev1)
+**Severidad:** HIGH
+**Fix disponible:** Sí — parcheado el 2026-05-17
+**Acción:** apt-get upgrade añadido al Dockerfile del expense tracker
+**Commit:** fix(security): add apt-get upgrade to patch libcap2 CVE-2026-4878 and systemd CVE-2026-29111
+**Estado:** Resuelto ✅
+
 ---
 
 ## Findings aceptados como riesgo
@@ -32,31 +46,6 @@ accesible desde el exterior de la aplicación.
 ejecución del pipeline.  
 **Estado:** Aceptado con criterio ⚠️
 
-### CVE-2026-29111 — systemd (libsystemd0, libudev1)
-**Severidad:** HIGH  
-**Fix disponible:** No — Debian no ha publicado parche  
-**Descripción:** Ejecución de código arbitrario o denegación de servicio
-via IPC espúreo.  
-**Análisis de riesgo:** systemd no está activo dentro del contenedor
-Docker. Los contenedores Docker no ejecutan systemd como proceso init
-por defecto. La librería está presente como dependencia transitiva
-de la imagen base pero no se ejecuta.  
-**Decisión:** Aceptado hasta que Debian publique fix. Revisar en cada
-ejecución del pipeline.  
-**Estado:** Aceptado con criterio ⚠️
-
-### CVE-2026-4878 — libcap2
-**Severidad:** HIGH  
-**Fix disponible:** No — Debian no ha publicado parche  
-**Descripción:** Escalada de privilegios via race condition TOCTOU
-en cap_set_file().  
-**Análisis de riesgo:** Esta vulnerabilidad requiere acceso local al
-sistema de ficheros del contenedor. El contenedor no expone ningún
-mecanismo que permita a un atacante externo ejecutar código dentro
-de él. La superficie de ataque no es accesible desde la API.  
-**Decisión:** Aceptado hasta que Debian publique fix. Revisar en cada
-ejecución del pipeline.  
-**Estado:** Aceptado con criterio ⚠️
 
 ---
 
