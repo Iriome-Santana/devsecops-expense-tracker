@@ -26,6 +26,8 @@ The target system is the [SRE Expense Tracker](https://github.com/Iriome-Santana
 - Defense-in-depth scanning across four independent layers: secrets, SAST, container vulnerabilities, and dependency vulnerabilities
 - Implemented documented risk acceptance for unfixed Debian CVEs with attack surface analysis
 - Zero additional infrastructure cost using GitHub Actions ephemeral runners
+- Nightly schedule detected newly published fixes for libcap2 and systemd CVEs that were previously unfixable — patched within hours of detection
+
 
 ---
 
