@@ -8,6 +8,15 @@ Herramienta: Trivy v0.70.0
 
 ## Findings resueltos
 
+### starlette PYSEC-2026-161
+**Herramienta:** pip-audit
+**Severidad:** MEDIUM
+**Fix disponible:** Sí
+**Causa:** starlette 0.52.1 (dependencia transitiva de FastAPI) tenía CVE con fix disponible
+**Acción:** FastAPI actualizado a 0.136.3 y starlette pinned a >=1.0.1 en pyproject.toml
+**Commit:** fix(security): upgrade fastapi to 0.136.3 and pin starlette>=1.0.1 to address PYSEC-2026-161
+**Estado:** Resuelto ✅
+
 ### pip CVE-2025-8869, CVE-2026-6357, CVE-2026-1703
 **Severidad:** MEDIUM / LOW  
 **Fix disponible:** Sí  
