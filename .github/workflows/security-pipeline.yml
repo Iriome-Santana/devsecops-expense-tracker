@@ -94,3 +94,22 @@ jobs:
           pytest>=9.0.3
           setuptools>=78.1.1
           EOF
+
+  iac-scan:
+    name: IaC Security (Checkov)
+    runs-on: ubuntu-latest
+    needs: dependency-scan
+
+    steps:
+      - name: Checkout Terraform repo
+        uses: actions/checkout@v4
+        with:
+          repository: Iriome-Santana/expense-tracker-terraform
+          fetch-depth: 0
+
+      - name: Run Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: .
+          soft_fail: true
+          output_format: cli
