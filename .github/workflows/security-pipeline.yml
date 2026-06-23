@@ -111,5 +111,5 @@ jobs:
         uses: bridgecrewio/checkov-action@master
         with:
           directory: .
-          soft_fail: true
+          soft_fail: false
           output_format: cli
